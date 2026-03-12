@@ -2,7 +2,6 @@ import java.util.*;
 
 /**
  * Representa el Autómata Finito Determinista.
- * (Versión inicial)
  */
 public class dfa {
 
@@ -18,7 +17,7 @@ public class dfa {
         this.transitions = transitions;
     }
 
-    // Solo imprimimos la tabla por ahora
+    // Imprime tabla de transición
     public void printTransitionTable() {
         System.out.println("\n=== TABLA DE TRANSICIÓN ===");
 
@@ -50,4 +49,3 @@ public class dfa {
         return finalStates.contains(current);
     }
 }
-

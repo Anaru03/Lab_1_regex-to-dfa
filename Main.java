@@ -1,5 +1,13 @@
 import java.util.Scanner;
 
+/**
+ * Programa principal.
+ * Permite:
+ *  1. Ingresar expresión regular
+ *  2. Construir el AFD
+ *  3. Mostrar tabla
+ *  4. Evaluar una cadena
+ */
 public class Main {
 
     public static void main(String[] args) {
@@ -20,23 +28,15 @@ public class Main {
         Builder dfaBuilder = new Builder(builder);
         dfa automata = dfaBuilder.build();
 
-        // Solo mostramos tabla en esta fase
+        // Simula una cadena
         automata.printTransitionTable();
-    }
 
-    
-    // Simula una cadena
-    public boolean simulate(String input) {
-        int current = initialState;
+        System.out.print("\nIngrese cadena a evaluar: ");
+        String input = scanner.nextLine();
 
-        for (char c : input.toCharArray()) {
-            if (!transitions.containsKey(current) ||
-                !transitions.get(current).containsKey(c))
-                return false;
-
-            current = transitions.get(current).get(c);
-        }
-
-        return finalStates.contains(current);
+        if (automata.simulate(input))
+            System.out.println("CADENA ACEPTADA :D");
+        else
+            System.out.println("CADENA RECHAZADA >:(");
     }
 }
