@@ -23,4 +23,20 @@ public class Main {
         // Solo mostramos tabla en esta fase
         automata.printTransitionTable();
     }
+
+    
+    // Simula una cadena
+    public boolean simulate(String input) {
+        int current = initialState;
+
+        for (char c : input.toCharArray()) {
+            if (!transitions.containsKey(current) ||
+                !transitions.get(current).containsKey(c))
+                return false;
+
+            current = transitions.get(current).get(c);
+        }
+
+        return finalStates.contains(current);
+    }
 }
