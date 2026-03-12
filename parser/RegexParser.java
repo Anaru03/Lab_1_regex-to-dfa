@@ -1,55 +1,28 @@
-package com.dfa.parser;
-
 /**
  * Parser recursivo descendente para expresiones regulares.
  *
- * Gramática (en orden de precedencia ascendente):
- *
+ * Gramática:
  *   expr    → term ( '|' term )*
- *   term    → factor ( factor )*          ← concatenación implícita
+ *   term    → factor ( factor )*
  *   factor  → atom ( '*' | '+' | '?' )*
  *   atom    → CHAR | '(' expr ')'
  *
- * Operadores soportados:
- *   |   unión
- *   ·   concatenación (implícita)
- *   *   cerradura de Kleene
- *   +   cerradura positiva
- *   ?   opcional
- *   ()  agrupación
- *   \x  escape de cualquier carácter especial
- *
- * Al final del parsing, el parser añade automáticamente la concatenación
- * con el marcador de fin '#' para que el método directo funcione
- * correctamente (la ER procesada internamente es:  (r)·# ).
- *
- * Uso:
- *   RegexParser parser = new RegexParser("(a|b)*abb");
- *   Node root = parser.parse();   // devuelve la raíz del árbol CON el marcador #
- *   int totalPositions = parser.getPositionCount();
+ * Al final se concatena automáticamente con '#'
+ * para que el método directo funcione correctamente.
  */
 public class RegexParser {
 
-    // ------------------------------------------------------------------ estado
     private final String input;
-    private int          pos;          // cursor sobre input
-    private int          positionCounter; // contador global de posiciones para hojas
+    private int pos;
+    private int positionCounter;
 
-    // ------------------------------------------------------------------ ctor
     public RegexParser(String regex) {
         if (regex == null || regex.isBlank())
             throw new IllegalArgumentException("La expresión regular no puede ser vacía.");
-        this.input           = regex.trim();
-        this.pos             = 0;
-        this.positionCounter = 0;
+        this.input = regex.trim();
     }
 
-    // ------------------------------------------------------------------ API pública
-
-    /**
-     * Parsea la expresión regular y devuelve la raíz del árbol sintáctico.
-     * La raíz es la concatenación de la ER con el marcador '#'.
-     */
+    // ---------------------- método principal
     public Node parse() {
         pos = 0;
         positionCounter = 0;
@@ -57,38 +30,33 @@ public class RegexParser {
         Node exprNode = parseExpr();
 
         if (pos != input.length())
-            throw new IllegalArgumentException(
-                "Carácter inesperado '" + input.charAt(pos) + "' en posición " + pos + ".");
+            throw new IllegalArgumentException("Error en posición " + pos);
 
-        // Agregar el marcador de fin '#' con la siguiente posición disponible
+        // agregar marcador final '#'
         Node endMarker = new Node('#', ++positionCounter);
-
-        // Raíz = concat(expr, #)
         return new Node(Node.Type.CONCAT, exprNode, endMarker);
     }
 
-    /** Número total de posiciones asignadas (incluyendo el marcador '#'). */
-    public int getPositionCount() { return positionCounter; }
+    public int getPositionCount() {
+        return positionCounter;
+    }
 
-    // ------------------------------------------------------------------ gramática
-
-    // expr → term ( '|' term )*
+    // ---------------------- expr
     private Node parseExpr() {
         Node left = parseTerm();
 
         while (pos < input.length() && input.charAt(pos) == '|') {
-            pos++; // consume '|'
+            pos++;
             Node right = parseTerm();
             left = new Node(Node.Type.UNION, left, right);
         }
         return left;
     }
 
-    // term → factor ( factor )*
+    // ---------------------- term (concatenación implícita)
     private Node parseTerm() {
         Node left = parseFactor();
 
-        // Mientras el siguiente token pueda iniciar un factor, concatenamos
         while (pos < input.length() && canStartFactor(input.charAt(pos))) {
             Node right = parseFactor();
             left = new Node(Node.Type.CONCAT, left, right);
@@ -96,7 +64,7 @@ public class RegexParser {
         return left;
     }
 
-    // factor → atom ( '*' | '+' | '?' )*
+    // ---------------------- factor (* + ?)
     private Node parseFactor() {
         Node node = parseAtom();
 
@@ -111,54 +79,26 @@ public class RegexParser {
             } else if (c == '?') {
                 pos++;
                 node = new Node(Node.Type.OPTIONAL, node);
-            } else {
-                break;
-            }
+            } else break;
         }
         return node;
     }
 
-    // atom → CHAR | '(' expr ')'
+    // ---------------------- atom
     private Node parseAtom() {
-        if (pos >= input.length())
-            throw new IllegalArgumentException(
-                "Se esperaba un átomo pero se alcanzó el final de la expresión.");
-
         char c = input.charAt(pos);
 
-        // Agrupación
         if (c == '(') {
-            pos++; // consume '('
+            pos++;
             Node inner = parseExpr();
-            if (pos >= input.length() || input.charAt(pos) != ')')
-                throw new IllegalArgumentException(
-                    "Falta ')' para cerrar el grupo (abierto cerca de posición " + (pos - 1) + ").");
             pos++; // consume ')'
             return inner;
         }
 
-        // Escape: \x trata 'x' como literal
-        if (c == '\\') {
-            if (pos + 1 >= input.length())
-                throw new IllegalArgumentException("Secuencia de escape incompleta al final.");
-            pos++; // consume '\'
-            c = input.charAt(pos);
-            pos++; // consume el carácter escapado
-            return new Node(c, ++positionCounter);
-        }
-
-        // Carácter ordinario (símbolo del alfabeto)
         pos++;
         return new Node(c, ++positionCounter);
     }
 
-    // ------------------------------------------------------------------ helpers
-
-    /**
-     * Determina si el carácter dado puede iniciar un factor dentro de una
-     * concatenación implícita. Los caracteres que NO inician un factor son:
-     * '|', ')', '*', '+', '?'  (o el fin de cadena).
-     */
     private boolean canStartFactor(char c) {
         return c != '|' && c != ')' && c != '*' && c != '+' && c != '?';
     }
